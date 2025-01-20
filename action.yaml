@@ -1,0 +1,95 @@
+name: Compile with BookML
+description: Compile LaTeX files to HTML via BookML
+branding:
+  icon: book
+  color: blue
+
+inputs:
+  checkout:
+    description: Checkout the current repository
+    default: true
+  scheme:
+    description: TeX Live scheme to use among 'basic', 'small', 'medium', 'full'
+    default: full
+  release:
+    description: Upload the outputs to a new GitHub release
+    default: true
+  version:
+    description: BookML version (if the `bookml` folder is already present, this only affects which Docker image is used)
+    default: latest
+  replace-bookml:
+    description: Replace the `bookml` folder, if present, with the one provided by the Docker image
+    default: false
+  timeout-minutes:
+    description: The maximum number of minutes to run BookML before cancelling the build
+    default: 6
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout the current repository
+      if: inputs.checkout
+      uses: actions/checkout@v4
+
+    # GitHub does not allow dynamic inputs in 'uses', so we need to pull the Docker image by hand
+    - name: Replace the `bookml` folder
+      if: inputs.replace-bookml
+      shell: bash
+      env:
+        IMAGE: ${{ format('ghcr.io/vlmantova/bookml-basic:{0}', inputs.version) }}
+      run: |
+        set -euxo pipefail
+        docker pull "$IMAGE"
+        docker run --rm -v"$GITHUB_WORKSPACE":/source "$IMAGE" update
+
+    - name: Compile with BookML
+      id: bookml
+      shell: bash
+      env:
+        IMAGE: ${{ format('ghcr.io/vlmantova/bookml{1}:{0}', inputs.version, inputs.scheme == 'full' && '' || format('-{0}', inputs.scheme)) }}
+        TIMEOUT: ${{ inputs.timeout-minutes }}
+      run: |
+        set -euxo pipefail
+        docker pull "$IMAGE"
+        docker run --rm -v"$GITHUB_WORKSPACE":/source -e TIMEOUT="$TIMEOUT" --entrypoint /bin/bash "$IMAGE" -c 'set -euxo pipefail ; timeout "$TIMEOUT"m /run-bookml -k all | tee .git/bookml-report'
+
+    - name: Save target names
+      id: targets
+      if: always()
+      shell: bash
+      run: 'echo "TARGETS=$(head -n 1 < .git/bookml-report | cut -d: -f2- | tr " " " " | xargs | sed -e "s/ /, /g")" >> "$GITHUB_OUTPUT"'
+
+    - name: Pack auxiliary folder
+      if: always()
+      shell: bash
+      env:
+        IMAGE: ${{ format('ghcr.io/vlmantova/bookml-basic:{0}', inputs.version) }}
+      run: |
+        set -euxo pipefail
+        docker pull "$IMAGE"
+        docker run --rm -v"$GITHUB_WORKSPACE":/source "$IMAGE" aux-zip
+
+    - name: Upload outputs
+      if: always() && inputs.release
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        notes_1: |-
+          ${{ format(steps.bookml.outcome == 'cancelled' && '**The build of outputs ${0} was cancelled.** Some outputs may be missing.' || ( steps.bookml.outcome == 'failure' && '**Some of the outputs {0} have failed to build.** Consult the AUX file for more information.' || (steps.targets.outputs.TARGETS == '' && '**No outputs have been built.** Please check that that .tex files containing `\documentclass` exist in the top folder and that their filenames have no spaces.' || '**Outputs {0} have been built.**')), steps.targets.outputs.TARGETS) }}
+
+          *Commit message:* ${{ github.event.head_commit.message }}
+
+          ### Summarised output
+          <pre><code>
+        notes_2: |-
+          </code></pre>
+
+          ### Full output
+          <details><summary><b>Click to show full output</b></summary>
+          <pre><code>
+        notes_3: |-
+          </code></pre></details>
+        title: "${{ steps.bookml.outcome == 'cancelled' && 'cancelled' || ( steps.bookml.outcome == 'failure' && 'failed' || 'successful' ) }} build: ${{ github.event.head_commit.message }}"
+        ref: ${{ github.ref_name }}
+        tag: build-${{ github.run_number }}
+      run: gh release create "$tag" --target="$ref" --repo="$GITHUB_REPOSITORY" --title="$title" --notes="$notes_1$(head -n 5 .git/bookml-report)"$'\n'$'\n'...$'\n'$'\n'"$(tail -n 5 .git/bookml-report)$notes_2$(cat .git/bookml-report)$notes_3" *.zip
