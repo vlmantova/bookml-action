@@ -18,11 +18,38 @@ esac
 
 TITLE="$TITLE build: $MESSAGE"
 
-read -r -d '' NOTES <<EOF
-$HEADER
+# the body of a GitHub release cannot exceed 125000 bytes
+MESSAGES=""
+SIZE="$(wc -c < .git/bookml-report)"
+MAX=120000
+if [[ $SIZE -gt $MAX ]] ; then
+  read -r -d '' MESSAGES<<EOF
+### Summarised output messages
+<pre><code>
+$(head -n 5 .git/bookml-report)
 
-*Commit message:* $MESSAGE
+[...]
 
+$(tail -n 5 .git/bookml-report)
+</code></pre>
+
+### Truncated output messages
+<details><summary><b>Click to show the last $MAX characters of the output messages</b></summary>
+<pre><code>
+[TRUNCATED] $(tail -c $MAX .git/bookml-report)
+</code></pre></details>
+EOF
+
+elif [[ $(wc -l < .git/bookml-report) -lt 20 ]] ; then
+  read -r -d '' MESSAGES<<EOF
+### Full output messages
+<pre><code>
+$(cat .git/bookml-report)
+</code></pre>
+EOF
+
+else
+  read -r -d '' MESSAGES<<EOF
 ### Summarised output messages
 <pre><code>
 $(head -n 5 .git/bookml-report)
@@ -33,10 +60,19 @@ $(tail -n 5 .git/bookml-report)
 </code></pre>
 
 ### Full output messages
-<details><summary><b>Click to show full output</b></summary>
+<details><summary><b>Click to show the full output messages</b></summary>
 <pre><code>
 $(cat .git/bookml-report)
 </code></pre></details>
 EOF
+fi
 
-exec gh release create "build-$RUN" --target="$REF" --repo="$GITHUB_REPOSITORY" --title="$TITLE" --notes="$NOTES" ./*.zip
+read -r -d '' NOTES <<EOF
+$HEADER
+
+*Commit message:* $MESSAGE
+
+$MESSAGES
+EOF
+
+gh release create "build-$RUN" --target="$REF" --repo="$GITHUB_REPOSITORY" --title="$TITLE" --notes="$NOTES" ./*.zip
