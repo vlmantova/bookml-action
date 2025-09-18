@@ -2,21 +2,21 @@
 
 case $OUTCOME in
   cancelled)
-    HEADER="**The build of outputs $TARGETS has been cancelled.** Some outputs may be missing. Increase \`timeout-minutes\` to allow more time."
+    HEADER="**Compiling outputs $TARGETS has been cancelled.** Some outputs may be missing. Increase \`timeout-minutes\` to allow more time."
     TITLE='cancelled' ;;
   success)
     if [[ -n $TARGETS ]] ; then
-      HEADER="**Outputs $TARGETS have been built.**"
+      HEADER="**Outputs $TARGETS have been compiled.**"
     else
       HEADER='**No outputs have been built.** Please check that that .tex files containing `\documentclass` exist in the top folder and that their filenames have no spaces.'
     fi
     TITLE='successful' ;;
   *)
-    HEADER="**Some of the outputs $TARGETS have failed to build.** Consult the AUX file for more information."
+    HEADER="**Some of the outputs $TARGETS have failed to compile.** Consult the AUX file for more information."
     TITLE='failed' ;;
 esac
 
-TITLE="$TITLE build: $MESSAGE"
+TITLE="$TITLE compiling: $MESSAGE"
 
 # the body of a GitHub release cannot exceed 125000 bytes
 MESSAGES=""
@@ -75,4 +75,11 @@ $HEADER
 $MESSAGES
 EOF
 
-gh release create "build-$RUN" --target="$REF" --repo="$GITHUB_REPOSITORY" --title="$TITLE" --notes="$NOTES" ./*.zip
+output="$(gh release create "build-$RUN" --target="$REF" --repo="$GITHUB_REPOSITORY" --title="$TITLE" --notes="$NOTES" ./*.zip 2>&1)"
+ret="$?"
+if [[ $ret != 0 ]] ; then
+  echo "::error title=GitHub release failed::${output//$'\n'/%0A}"
+  exit "$ret"
+else
+  echo "$output"
+fi

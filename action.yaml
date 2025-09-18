@@ -40,7 +40,9 @@ runs:
         VERSION: ${{ inputs.version }}
         REPLACE_BOOKML: ${{ inputs.replace-bookml }}
         TIMEOUT_MINUTES: ${{ inputs.timeout-minutes }}
-      run: '"${{ github.action_path }}/compile.sh"'
+      run: |
+        ### Compile with BookML ###
+        "${{ github.action_path }}/compile.sh"
 
     - name: Upload outputs
       if: inputs.release
@@ -52,4 +54,6 @@ runs:
         MESSAGE: ${{ github.event.head_commit.message }}
         REF: ${{ github.ref_name }}
         RUN: ${{ github.run_number }}
-      run: '"${{ github.action_path }}/release.sh"'
+      run: |
+        ### Upload outputs ###
+        "${{ github.action_path }}/release.sh"
