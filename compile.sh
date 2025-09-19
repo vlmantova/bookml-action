@@ -57,10 +57,12 @@ esac
 
 /run-bookml aux-zip
 
-targets="$(grep '^ Targets: ' < .git/bookml-report | head -n 1 | sed -E -e 's/^.*:\s*|(\s| )*$//g' -e 's/\s+/, /g')"
+targets="$(grep '^ Targets: ' < .git/bookml-report | head -n 1 | sed -E -e 's/^.*:\s*|(\s| )*$//g')"
+outputs="$(ls -C --width=0 $targets 2>/dev/null || :)"
 
 echo "outcome=$outcome" >> .git/github-output
 echo "targets=$targets" >> .git/github-output
+echo "outputs=$outputs" >> .git/github-output
 EOF
 
 echo "::$restartToken::"

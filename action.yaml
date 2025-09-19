@@ -51,9 +51,8 @@ runs:
         GITHUB_TOKEN: ${{ github.token }}
         OUTCOME: ${{ steps.bookml.outputs.outcome }}
         TARGETS: ${{ steps.bookml.outputs.targets }}
+        OUTPUTS: ${{ steps.bookml.outputs.outputs }}
         MESSAGE: ${{ github.event.head_commit.message }}
-        REF: ${{ github.ref_name }}
-        RUN: ${{ github.run_number }}
       run: |
         ### Upload outputs ###
         "${{ github.action_path }}/release.sh"
