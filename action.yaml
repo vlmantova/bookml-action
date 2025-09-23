@@ -1,4 +1,5 @@
 name: Compile with BookML
+author: Vincenzo Mantova
 description: Compile LaTeX files to HTML via BookML
 branding:
   icon: book
@@ -9,7 +10,10 @@ inputs:
     description: Checkout the current repository
     default: true
   release:
-    description: Upload the outputs to a new GitHub release
+    description: Create a GitHub release with all the outputs
+    default: true
+  upload-aux-directory:
+    description: Upload the aux directory, including all outputs, longs, and other intermediate files into a GitHub artifact
     default: true
   scheme:
     description: TeX Live scheme to use among 'basic', 'small', 'medium', 'full'
@@ -18,11 +22,28 @@ inputs:
     description: BookML version (if the `bookml` folder is already present, this only affects which Docker image is used)
     default: latest
   replace-bookml:
-    description: Replace the `bookml` folder, if present, with the one provided by the Docker image
+    description: Replace the `bookml` folder, if present, with the version included in the Docker image
     default: false
   timeout-minutes:
     description: The maximum number of minutes to run BookML before cancelling the build
     default: 6
+
+outputs:
+  outputs:
+    description: File names of all outputs compiled by BookML
+    value: steps.bookml.outputs.outputs
+  targets:
+    description: File names of all targets that BookML tried to compile
+    value: steps.bookml.outputs.targets
+  outcome:
+    description: Compiling outcome (one of 'success', 'failure', 'timeout', 'invalid', 'cancelled')
+    value: steps.bookml.outputs.outcome
+  aux-directory-url:
+    description: URL of GitHub artifact containing the aux directory
+    value: steps.upload-aux-directory.outputs.artifact-url
+  release-url:
+    description: URL of GitHub release
+    value: steps.release.outputs.release-url
 
 runs:
   using: composite
@@ -42,17 +63,30 @@ runs:
         TIMEOUT_MINUTES: ${{ inputs.timeout-minutes }}
       run: |
         ### Compile with BookML ###
-        "${{ github.action_path }}/compile.sh"
+        "$GITHUB_ACTION_PATH"/compile.sh
 
-    - name: Upload outputs
-      if: inputs.release
+    - name: Upload aux directory (all products, including logs)
+      uses: actions/upload-artifact@v4
+      id: upload-aux-directory
+      if: ${{ always() && steps.bookml.outputs.outcome != 'invalid' && inputs.upload-aux-directory == 'true' }}
+      with:
+        name: aux-directory
+        path: ${{ runner.temp }}/auxdir/*
+        if-no-files-found: ignore
+        include-hidden-files: true
+
+    - name: Create summary and release
+      if: ${{ always() }}
+      id: release
       shell: sh
       env:
-        GITHUB_TOKEN: ${{ github.token }}
-        OUTCOME: ${{ steps.bookml.outputs.outcome }}
+        GH_TOKEN: ${{ github.token }}
+        RELEASE: ${{ inputs.release }}
+        AUX_URL: ${{ steps.upload-aux-directory.outputs.artifact-url }}
+        OUTCOME: ${{ steps.bookml.outcome == 'cancelled' && 'cancelled' || steps.bookml.outputs.outcome }}
         TARGETS: ${{ steps.bookml.outputs.targets }}
         OUTPUTS: ${{ steps.bookml.outputs.outputs }}
         MESSAGE: ${{ github.event.head_commit.message }}
       run: |
-        ### Upload outputs ###
-        "${{ github.action_path }}/release.sh"
+        ### Create summary and release ###
+        "$GITHUB_ACTION_PATH"/release.sh
