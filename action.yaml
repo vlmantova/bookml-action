@@ -49,7 +49,7 @@ runs:
   using: composite
   steps:
     - name: Checkout the current repository
-      if: inputs.checkout
+      if: ${{ inputs.checkout == 'true' }}
       uses: actions/checkout@v4
 
     # GitHub does not allow dynamic inputs in 'uses', so we need to pull the Docker image by hand

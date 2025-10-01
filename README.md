@@ -20,6 +20,8 @@ On every push, the action will checkout the repository, compile all .tex files c
 
 ## What's new
 
+- **v1.2.1.** Bugfix: respect value of `inputs.checkout`.
+
 - **v1.2.** Several improvements in user experience.
   - The release text includes direct links to each download and a link to the workflow run page on GitHub.
   - Error messages are highlighted in red in the workflow run page and are included prominently in the release text.
