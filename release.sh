@@ -67,6 +67,19 @@ if [[ $RELEASE == true ]] ; then
   tag="bookml-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT"
   downUrl="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$tag"
 
+  # Add links to each output in Downloads section
+  for output in $OUTPUTS ; do
+    downloads+=$'\n'"- [$output]($downUrl/$output)"
+  done
+
+  downloads+="$aux_download"
+
+  # Release notes, part 1
+  notes="$header"
+  [[ -z $downloads ]] || notes+=$'\n\n### Downloads\n\n'"$downloads"
+  [[ -z $errorMessages ]] || notes+=$'\n\n'"$errorMessages"
+  notes+=$'\n\n'"Full [workflow report]($workflow_report)."
+
   if [[ -e $bookml_report ]] ; then
     # Messages
     # note: the body of a GitHub release cannot exceed 125000 bytes
@@ -77,7 +90,7 @@ if [[ $RELEASE == true ]] ; then
       messages+=$'</code></pre>\n'
     else
       SIZE="$(wc -c < "$bookml_report")"
-      MAX=$((124000 - ${#header} - ${#downloads} - ${#errorMessages}))
+      MAX=$((124000 - ${#notes}))
       messages='### Summarised output messages'
       messages+=$'\n<pre><code>\n'
       messages+="$(head -n 5 "$bookml_report")"
@@ -100,18 +113,7 @@ if [[ $RELEASE == true ]] ; then
     fi
   fi
 
-  # Add links to each output in Downloads section
-  for output in $OUTPUTS ; do
-    downloads+=$'\n'"- [$output]($downUrl/$output)"
-  done
-
-  downloads+="$aux_download"
-
-  # Release notes
-  notes="$header"
-  [[ -z $downloads ]] || notes+=$'\n\n### Downloads\n\n'"$downloads"
-  [[ -z $errorMessages ]] || notes+=$'\n\n'"$errorMessages"
-  notes+=$'\n\n'"Full [workflow report]($workflow_report)."
+  # Release notes, part 2
   notes+=$'\n\n'"$messages"
 
   release="$(gh release create "$tag" --target="$GITHUB_REF_NAME" --repo="$GITHUB_REPOSITORY" --title="$title" --notes="$notes" $OUTPUTS 2>&1)"

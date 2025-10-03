@@ -20,6 +20,8 @@ On every push, the action will checkout the repository, compile all .tex files c
 
 ## What's new
 
+- **v1.2.2.** Bugfix: truncate messages correctly to stay below 125000 character limit.
+
 - **v1.2.1.** Bugfix: respect value of `inputs.checkout`.
 
 - **v1.2.** Several improvements in user experience.
