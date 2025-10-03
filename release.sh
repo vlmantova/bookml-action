@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-bookml_report="$RUNNER_TEMP"/auxdir/bookml-report
+bookml_report="$RUNNER_TEMP"/auxdir/bookml-report.log
 workflow_report="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT"
+output_messages="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/job/$JOB_CHECK_RUN_ID"
 consult="Consult the [workflow report]($workflow_report)${AUX_URL:+ and the logs in the [aux directory]($AUX_URL)} for more information."
 
 # Header
@@ -51,7 +52,7 @@ if [[ -e "$bookml_report" ]] ; then
   errors="$(grep -E '^([^:]*):([0-9]+):\s*(.*)$|^(Error|Fatal):([^:]+:.*) at ([^;]+);( from)?( line ([0-9]+))?( col ([0-9]+))?( to line [0-9]+( col [0-9]+)?)?$' < "$bookml_report" || :)"
   errors="${errors%$'\n'}"
   if [[ -n $errors ]] ; then
-    errorMessages=$'### Error messages\n\n- '"${errors//$'\n'/$'\n'- }"
+    errorMessages=$'### Error messages\n\n- ```'"${errors//$'\n'/$'```\n- ```'}"'```'
   fi
 fi
 
@@ -74,47 +75,18 @@ if [[ $RELEASE == true ]] ; then
 
   downloads+="$aux_download"
 
-  # Release notes, part 1
+  # Release notes
   notes="$header"
   [[ -z $downloads ]] || notes+=$'\n\n### Downloads\n\n'"$downloads"
-  [[ -z $errorMessages ]] || notes+=$'\n\n'"$errorMessages"
-  notes+=$'\n\n'"Full [workflow report]($workflow_report)."
-
-  if [[ -e $bookml_report ]] ; then
-    # Messages
-    # note: the body of a GitHub release cannot exceed 125000 bytes
-    if [[ $(wc -l < "$bookml_report") -lt 20 ]] ; then
-      messages='### Full output messages'
-      messages+=$'\n<pre><code>\n'
-      messages+="$(cat "$bookml_report")"
-      messages+=$'</code></pre>\n'
-    else
-      SIZE="$(wc -c < "$bookml_report")"
-      MAX=$((124000 - ${#notes}))
-      messages='### Summarised output messages'
-      messages+=$'\n<pre><code>\n'
-      messages+="$(head -n 5 "$bookml_report")"
-      messages+=$'\n[...]\n\n'
-      messages+="$(tail -n 5 "$bookml_report")"
-      messages+=$'</code></pre>\n'
-      if [[ $SIZE -gt $MAX ]] ; then
-        messages+=$'\n### Truncated output messages'
-        messages+=$'\n'"<details><summary><b>Click to show the last $MAX characters of the output messages</b></summary>"
-        messages+=$'\n<pre><code>\n'
-        messages+="[TRUNCATED] $(tail -c $MAX "$bookml_report")"
-        messages+=$'\n'"</code></pre></details>"
-      else
-        messages+=$'\n### Full output messages'
-        messages+=$'\n'"<details><summary><b>Click to show the full output messages</b></summary>"
-        messages+=$'\n<pre><code>\n'
-        messages+="$(cat "$bookml_report")"
-        messages+=$'\n'"</code></pre></details>"
-      fi
-    fi
+  MAX=$((124000 - ${#notes}))
+  if [[ $MAX -lt ${#errorMessages} ]] ; then
+    truncatedMessages="${errorMessages:0:$MAX}"
+    truncatedMessages="${truncatedMessages%$'\n'*}"$'\n- **Further messages removed to fit within the GitHub release notes limits.**'
+    notes+=$'\n\n'"$truncatedMessages"
+  elif [[ -n $errorMessages ]] ; then
+    notes+=$'\n\n'"$errorMessages"
   fi
-
-  # Release notes, part 2
-  notes+=$'\n\n'"$messages"
+  notes+=$'\n\n'"More details can be found in the [summary workflow report]($workflow_report) and the [output messages]($output_messages)."
 
   release="$(gh release create "$tag" --target="$GITHUB_REF_NAME" --repo="$GITHUB_REPOSITORY" --title="$title" --notes="$notes" $OUTPUTS 2>&1)"
   ret="$?"
@@ -123,15 +95,17 @@ if [[ $RELEASE == true ]] ; then
     echo "::error title=GitHub release failed::${release//$'\n'/%0A}"
     [[ -z $aux_download ]] || echo $'\n### Downloads\n\n'"$aux_download" >> "$GITHUB_STEP_SUMMARY"
     [[ -z $errorMessages ]] || echo $'\n'"$errorMessages" >> "$GITHUB_STEP_SUMMARY"
+    echo $'\n'"More details can be found in the [output messages]($output_messages)." >> "$GITHUB_STEP_SUMMARY"
     exit "$ret"
   else
     echo "$release"
     echo "release-url=$release" >> "$GITHUB_OUTPUT"
     [[ -z $downloads ]] || echo $'\n### Downloads\n'"$downloads" >> "$GITHUB_STEP_SUMMARY"
-    echo $'\n'"[Release page]($release)." >> "$GITHUB_STEP_SUMMARY"
     [[ -z $errorMessages ]] || echo $'\n'"$errorMessages" >> "$GITHUB_STEP_SUMMARY"
+    echo $'\n'"More details can be found in the [output messages]($output_messages). [Release page]($release)." >> "$GITHUB_STEP_SUMMARY"
   fi
 else
   [[ -z $aux_download ]] || echo $'\n### Downloads\n'"$aux_download" >> "$GITHUB_STEP_SUMMARY"
   [[ -z $errorMessages ]] || echo $'\n'"$errorMessages" >> "$GITHUB_STEP_SUMMARY"
+  echo $'\n'"More details can be found in the [output messages]($output_messages)." >> "$GITHUB_STEP_SUMMARY"
 fi

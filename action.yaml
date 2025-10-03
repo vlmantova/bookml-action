@@ -81,6 +81,7 @@ runs:
       shell: sh
       env:
         GH_TOKEN: ${{ github.token }}
+        JOB_CHECK_RUN_ID: ${{ job.check_run_id }}
         RELEASE: ${{ inputs.release }}
         AUX_URL: ${{ steps.upload-aux-directory.outputs.artifact-url }}
         OUTCOME: ${{ steps.bookml.outcome == 'cancelled' && 'cancelled' || steps.bookml.outputs.outcome }}

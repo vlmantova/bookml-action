@@ -48,7 +48,7 @@ fi
 
 export max_print_line=10000
 
-timeout "$TIMEOUT_MINUTES"m /run-bookml -k all AUX_DIR=/auxdir 2>&1 | tee /auxdir/bookml-report
+timeout "$TIMEOUT_MINUTES"m /run-bookml -k all AUX_DIR=/auxdir 2>&1 | tee /auxdir/bookml-report.log
 
 case "${PIPESTATUS[0]}" in
   124|137) outcome=timeout
@@ -57,7 +57,7 @@ case "${PIPESTATUS[0]}" in
   *) outcome=failure ;;
 esac
 
-targets="$(grep '^ Targets: ' < /auxdir/bookml-report | head -n 1 | sed -E -e 's/^.*:\s*|(\s| )*$//g')"
+targets="$(grep '^ Targets: ' < /auxdir/bookml-report.log | head -n 1 | sed -E -e 's/^.*:\s*|(\s| )*$//g')"
 outputs="$(ls -C --width=0 $targets 2>/dev/null || :)"
 
 echo "outcome=$outcome" >> /github-output
