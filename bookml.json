@@ -15,7 +15,7 @@
       "owner": "bookml-latexml-errors",
       "pattern": [
         {
-          "regexp": "^((Error|Fatal):[^:]+:.* at ([^;]+);( from)?( line ([0-9]+))?( col ([0-9]+))?( to line [0-9]+( col [0-9]+)?)?)$",
+          "regexp": "^((Error|Fatal):[^:]+:.* at ([^;]+);( from)?( line ([0-9]+))?( col ([0-9]+))?( to line [0-9]+( col [0-9]+)?)?|(Error|Fatal):[^:]+:.*|(Conversion|Postprocessing) failed.*)$",
           "file": 3,
           "line": 6,
           "column": 8,
@@ -28,7 +28,7 @@
       "severity": "warning",
       "pattern": [
         {
-          "regexp": "^((Warn):[^:]+:.* at ([^;]+);( from)?( line ([0-9]+))?( col ([0-9]+))?( to line [0-9]+( col [0-9]+)?)?)$",
+          "regexp": "^((Info|Warning):[^:]+:.* at ([^;]+);( from)?( line ([0-9]+))?( col ([0-9]+))?( to line [0-9]+( col [0-9]+)?)?|(Info|Warning):[^:]+:.*|(Conversion|Postprocessing) complete.* \\(See.*)$",
           "file": 3,
           "line": 6,
           "column": 8,

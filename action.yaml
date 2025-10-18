@@ -88,6 +88,7 @@ runs:
         TARGETS: ${{ steps.bookml.outputs.targets }}
         OUTPUTS: ${{ steps.bookml.outputs.outputs }}
         MESSAGE: ${{ github.event.head_commit.message }}
+        VERSION: ${{ inputs.version }}
       run: |
         ### Create summary and release ###
         "$GITHUB_ACTION_PATH"/release.sh

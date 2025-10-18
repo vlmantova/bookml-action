@@ -20,6 +20,8 @@ On every push, the action will checkout the repository, compile all .tex files c
 
 ## What's new
 
+- **v1.2.4** Major change: much improved readability of error messages, with working links to the cause of the error when using the BookML Docker image v0.21.0 or later.
+
 - **v1.2.3.** Major change: replace output messages in release with link to equivalent GitHub page.
 
 - **v1.2.2.** Bugfix: truncate messages correctly to stay below 125000 character limit.
