@@ -4,20 +4,25 @@ bookml_report="$RUNNER_TEMP"/auxdir/bookml-report.log
 workflow_report="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT"
 output_messages="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/job/$JOB_CHECK_RUN_ID"
 
+blobUrl="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/"
+workflowUrl="${GITHUB_WORKFLOW_REF%@*}"
+workflowUrl=".github/workflows/${workflowUrl#*/.github/workflows/}"
+workflowUrl="$blobUrl$workflowUrl"
+
 # Header
 case $OUTCOME in
   invalid)
-    header=$'**The configuration of your GitHub workflow seems invalid.**\n'
+    header="**The configuration of [your GitHub workflow]($workflowUrl) seems invalid.**  "$'\n'
     header+=$'Check that the values of `timeout-minutes`, `scheme`, `version` are valid.\n'
     outcome=invalid ;;
   success)
     outcome=successful ;;
   timeout)
-    header="**Compiling outputs $TARGETS has timed out.**"$'\n'
-    header+=$'Increase `timeout-minutes` to allow more time.\n'
+    header=$'**Compiling has timed out.**  \n'
+    header+="Increase \`timeout-minutes\` in [your GitHub workflow]($workflowUrl) to allow more time."$'\n'
     outcome='timed out' ;;
   cancelled)
-    header="**The workflow was cancelled while compiling $TARGETS.**"$'\n'
+    header=$'**The workflow was cancelled while compiling.**  \n'
     header+=$'This may happen, for instance, if the workflow runs for more than 360 minutes.\n'
     outcome=cancelled ;;
   *)
@@ -27,26 +32,34 @@ esac
 
 [[ -z $header ]] || header+=$'\n'
 
-if [[ ! -f "$bookml_report" ]] ; then
+if [[ ! -e "$bookml_report" ]] ; then
   header+=$'**BookML did not run.**\n'
 elif [[ -z $TARGETS ]] ; then
-  header+=$'**BookML did not try to compile any file.**\n'
+  header+=$'**BookML did not try to compile any file.**  \n'
   header+=$'Please check that .tex files containing `\documentclass` exist in the top folder and that their filenames have no spaces.\n'
-elif [[ -z $OUTPUTS ]] ; then
-  header+="**No outputs have been compiled, out of intended targets ${TARGETS// /, }.**"$'\n'
 else
   read -r -a outputs <<< "$OUTPUTS"
   read -r -a targets <<< "$TARGETS"
-  if [[ ${#outputs[@]} < ${#targets[@]} ]] ; then
-    header+="**Only ${OUTPUTS// /, } have been compiled, out of intended targets ${TARGETS// /, }.**"$'\n'
+  if [[ ${#outputs[@]} -eq 0 ]] ; then
+    header+=$'**No target has been compiled successfully.**  \n'
+  elif [[ ${#outputs[@]} < ${#targets[@]} ]] ; then
+    header+="**Only ${#outputs[@]} out of ${#targets[@]} targets "
+    if [[ ${#outputs[@]} -eq 1 ]] ; then header+='has' ; else header+='have' ; fi
+    header+=$' been compiled successfully.**  \n'
   else
-    header+="**All outputs ${TARGETS// /, } have been compiled.**"$'\n'
+    header+="**All targets have been compiled successfully.**"$'  \n'
   fi
+  for target in "${targets[@]}" ; do
+    if [[ " ${outputs[*]} " != *" $target "* ]] ; then
+      failed+=("$target")
+    fi
+  done
+  [[ ${#outputs[@]} -eq 0 ]] || header+="Successful targets: ${outputs[*]}"$'  \n'
+  [[ ${#failed[@]} -eq 0 ]] || header+="Failed targets: ${failed[*]}"$'  \n'
 fi
 
 # Error messages
 if [[ -e "$bookml_report" ]] ; then
-  blobUrl="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/"
   if [[ $VERSION == v0.* ]] ; then
     subver="${VERSION#v0.}"
     subver="${subver%%.*}"
@@ -55,18 +68,18 @@ if [[ -e "$bookml_report" ]] ; then
     fullPaths=true
   fi
   if [[ $fullPaths == true ]] ; then
-    fileLineFromTo='<a href="'"$blobUrl"'\3#L\4C\5-L\7C\9">\3</a>'
-    fileLine='<a href="'"$blobUrl"'\3#L\4C\6">\3</a>'
+    fileLineFromTo='<a href="'"$blobUrl"'\3#L\4C\5-L\7C\9"><ins>\3</ins></a>'
+    fileLine='<a href="'"$blobUrl"'\3#L\4C\6"><ins>\3</ins></a>'
   fi
   # the sed expressions include logic for generating links to line/columns
   # unfortunately, LaTeXML does not include the path to the file, so we cannot use it yet
   messages="$(sed -E -n -e 's!&!\&amp;!g ; s!\\!\&bsol;!g ; s!<!\&lt;!g ; s!>!\&gt;!g ; s!"!\&quot;!g' \
-                -e 's!^([a-zA-Z]+:[^: ]+:[^ ]*)( .* at )(/[^; ]+|String|bookml/[^; ]+)(;.*)?$!<samp><b>\1</b>\2<ins>\3</ins>\4</samp>!' \
+                -e 's!^([a-zA-Z]+:[^: ]+:[^ ]*)( .* at )(/[^; ]+|String|bookml/[^; ]+)(;.*)?$!<samp><b>\1</b>\2\3\4</samp>!' \
                 -e 's!^([a-zA-Z]+:[^: ]+:[^ ]*)( .* at )([^; ]+); from line ([0-9]+)( col ([0-9]+))? to line ([0-9]+)( col ([0-9]+))?$!<samp><b>\1</b>\2'"${fileLineFromTo-'\3'}"'; from line \4\5 to line \7\8</samp>!' \
                 -e 's!^([a-zA-Z]+:[^: ]+:[^ ]*)( .* at )([^; ]+); line ([0-9]+)( col ([0-9]+))?$!<samp><b>\1</b>\2'"${fileLine-'\3'}"'; line \4\5</samp>!' \
                 -e 's!^((Warning|Error|Fatal):[^: ]+:[^ ]*)( .*)$!<samp><b>\1</b>\3</samp>!' \
                 -e 's!C(-L[0-9]+C[0-9]*")!\1!' -e 's!C"!"!' \
-                -e 's!^(\./([^: ]*))(:([0-9]+):)(.*)$!|💥|<samp><b><a href="'"$blobUrl"'\2#L\4"><ins>\1</ins></a></ins>\3</b>\5</samp>|!p' \
+                -e 's!^(\./([^: ]*))(:([0-9]+):)(.*)$!|💥|<samp><b><a href="'"$blobUrl"'\2#L\4"><ins>\1</ins></a>\3</b>\5</samp>|!p' \
                 -e 's!^((Conversion|Postprocessing) (complete|failed):?)(.* \(See )([^\)]+)(\).*)$!<samp><b>\1</b>\4<ins>\5</ins>\6</samp>!' \
                 -e 's!^((Conversion|Postprocessing) failed)(.*)$!<samp><b>\1</b>\3</samp>!' \
                 -e 's!^(<samp><b>Info:.*)$!|🔵|\1|!p' \
