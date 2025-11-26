@@ -58,7 +58,7 @@ case "${PIPESTATUS[0]}" in
 esac
 
 targets="$(grep '^ Targets: ' < /auxdir/bookml-report.log | head -n 1 | sed -E -e 's/^.*:\s*|(\s| )*$//g')"
-outputs="$(ls -C --width=0 $targets 2>/dev/null || :)"
+outputs="${targets:+$(ls -C --width=0 $targets 2>/dev/null || :)}"
 
 echo "outcome=$outcome" >> /github-output
 echo "targets=$targets" >> /github-output

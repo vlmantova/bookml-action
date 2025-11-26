@@ -79,7 +79,8 @@ if [[ -e "$bookml_report" ]] ; then
                 -e 's!^([a-zA-Z]+:[^: ]+:[^ ]*)( .* at )([^; ]+); line ([0-9]+)( col ([0-9]+))?$!<samp><b>\1</b>\2'"${fileLine-'\3'}"'; line \4\5</samp>!' \
                 -e 's!^((Warning|Error|Fatal):[^: ]+:[^ ]*)( .*)$!<samp><b>\1</b>\3</samp>!' \
                 -e 's!C(-L[0-9]+C[0-9]*")!\1!' -e 's!C"!"!' \
-                -e 's!^(\./([^: ]*))(:([0-9]+):)(.*)$!|💥|<samp><b><a href="'"$blobUrl"'\2#L\4"><ins>\1</ins></a>\3</b>\5</samp>|!p' \
+                -e '/^!/{ : generic-error ; N ; s!^(.*\n)(\./([^: ]*))(:([0-9]+):)(.*)$!|💥|<samp>\1<b><a href="'"$blobUrl"'\3#L\5"><ins>\2</ins></a>\4</b>\6</samp>|! ; $s!(.*)!|💥|<samp>\1</samp>|! ; T generic-error ; s!\n+!<br/>!gp }' \
+                -e '/^\.\/[^: ]*:[0-9]+:/{ s!^(\./([^: ]*))(:([0-9]+):)(.*)$!|💥|<samp><b><a href="'"$blobUrl"'\2#L\4"><ins>\1</ins></a>\3</b>\5</samp>! ; N ; s!</samp>\n(l\.[0-9]+\s.*)$!<br/>\1</samp>!p ; t line-done ; P ; D ; : line-done }' \
                 -e 's!^((Conversion|Postprocessing) (complete|failed):?)(.* \(See )([^\)]+)(\).*)$!<samp><b>\1</b>\4<ins>\5</ins>\6</samp>!' \
                 -e 's!^((Conversion|Postprocessing) failed)(.*)$!<samp><b>\1</b>\3</samp>!' \
                 -e 's!^(<samp><b>Info:.*)$!|🔵|\1|!p' \
@@ -134,17 +135,17 @@ if [[ $RELEASE == true ]] ; then
     escapedRelease="${release//&/'&amp;'}"
     escapedRelease="${escapedRelease//</'&lt;'}"
     escapedRelease="${escapedRelease//>/'&gt;'}"
-    echo "$header"$'\n**Release failed with message:**\n\n'"<pre><samp>$escapedRelease</samp></pre>"$'\n\n'"Consult the ${AUX_URL:+logs in the [aux directory]($AUX_URL) and the }[output messages]($output_messages) for more information." >> "$GITHUB_STEP_SUMMARY"
+    echo "$header"$'\n**Release failed with message:**\n\n'"<pre><samp>$escapedRelease</samp></pre>"$'\n\n'"${AUX_URL:+${OUTPUTS:+All outputs can still be downloaded from the [aux directory]($AUX_URL). }}Further details can be found in the ${AUX_URL:+logs in the [aux directory]($AUX_URL) and the }[output messages]($output_messages)." >> "$GITHUB_STEP_SUMMARY"
     [[ -z $messages ]] || echo -n "$messagesHeader$messages" >> "$GITHUB_STEP_SUMMARY"
     exit "$ret"
   else
     echo "$release"
     echo "release-url=$release" >> "$GITHUB_OUTPUT"
-    echo "$header"$'\n'"All details can be found in the ${AUX_URL:+the logs in the [aux directory]($AUX_URL) and the }[output messages]($output_messages)."$'\n\n'"[Release page]($release)." >> "$GITHUB_STEP_SUMMARY"
+    echo "$header"$'\n'"[Release page]($release)."$'\n\n'"${AUX_URL:+${OUTPUTS:+All outputs can also be downloaded from the [aux directory]($AUX_URL). }}Further details can be found in the ${AUX_URL:+logs in the [aux directory]($AUX_URL) and the }[output messages]($output_messages)." >> "$GITHUB_STEP_SUMMARY"
     [[ -z $downloads ]] || echo -n $'\n### Downloads\n'"$downloads" >> "$GITHUB_STEP_SUMMARY"
     [[ -z $messages ]] || echo -n "$messagesHeader$messages" >> "$GITHUB_STEP_SUMMARY"
   fi
 else
-  echo "$header"$'\n'"All details can be found in the ${AUX_URL:+logs in the [aux directory]($AUX_URL) and the }[output messages]($output_messages)." >> "$GITHUB_STEP_SUMMARY"
+  echo "$header"$'\n'"${AUX_URL:+${OUTPUTS:+All outputs can be downloaded from the [aux directory]($AUX_URL). }}Further details can be found in the ${AUX_URL:+logs in the [aux directory]($AUX_URL) and the }[output messages]($output_messages)." >> "$GITHUB_STEP_SUMMARY"
   [[ -z $messages ]] || echo -n "$messagesHeader$messages" >> "$GITHUB_STEP_SUMMARY"
 fi

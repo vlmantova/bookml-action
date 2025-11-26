@@ -20,6 +20,8 @@ On every push, the action will checkout the repository, compile all .tex files c
 
 ## What's new
 
+- **v1.2.6** Major changes: capture and report multiline TeX error messages, and clarify that the outputs are also in the aux directory.
+
 - **v1.2.5** Minor change: improve header of summary and release notes.
 
 - **v1.2.4** Major change: much improved readability of error messages, with working links to the cause of the error when using the BookML Docker image v0.21.0 or later.
