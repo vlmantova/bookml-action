@@ -68,8 +68,8 @@ if [[ -e "$bookml_report" ]] ; then
     fullPaths=true
   fi
   if [[ $fullPaths == true ]] ; then
-    fileLineFromTo='<a href="'"$blobUrl"'\3#L\4C\5-L\7C\9"><ins>\3</ins></a>'
-    fileLine='<a href="'"$blobUrl"'\3#L\4C\6"><ins>\3</ins></a>'
+    fileLineFromTo='<a target="_blank" href="'"$blobUrl"'\3#L\4C\5-L\7C\9"><ins>\3</ins></a>'
+    fileLine='<a target="_blank" href="'"$blobUrl"'\3#L\4C\6"><ins>\3</ins></a>'
   fi
   # the sed expressions include logic for generating links to line/columns
   # unfortunately, LaTeXML does not include the path to the file, so we cannot use it yet
@@ -79,9 +79,9 @@ if [[ -e "$bookml_report" ]] ; then
                 -e 's!^([a-zA-Z]+:[^: ]+:[^ ]*)( .* at )([^; ]+); line ([0-9]+)( col ([0-9]+))?$!<samp><b>\1</b>\2'"${fileLine-'\3'}"'; line \4\5</samp>!' \
                 -e 's!^((Warning|Error|Fatal):[^: ]+:[^ ]*)( .*)$!<samp><b>\1</b>\3</samp>!' \
                 -e 's!C(-L[0-9]+C[0-9]*")!\1!' -e 's!C"!"!' \
-                -e '/^!/{ : generic-error ; N ; s!^(.*\n)(\./([^: ]*))(:([0-9]+):)(.*)$!|💥|<samp>\1<b><a href="'"$blobUrl"'\3#L\5"><ins>\2</ins></a>\4</b>\6</samp>|! ; $s!(.*)!|💥|<samp>\1</samp>|! ; T generic-error ; s!\n+!<br/>!gp }' \
-                -e '/^\.\/[^: ]*:[0-9]+:/{ s!^(\./([^: ]*))(:([0-9]+):)(.*)$!|💥|<samp><b><a href="'"$blobUrl"'\2#L\4"><ins>\1</ins></a>\3</b>\5</samp>! ; N ; s!</samp>\n(l\.[0-9]+\s.*)$!<br/>\1</samp>!p ; t line-done ; P ; D ; : line-done }' \
-                -e 's!^((Conversion|Postprocessing) (complete|failed):?)(.* \(See )([^\)]+)(\).*)$!<samp><b>\1</b>\4<ins>\5</ins>\6</samp>!' \
+                -e '/^!/{ : generic-error ; N ; s!^(.*\n)(\./([^: ]*))(:([0-9]+):)(.*)$!|💥|<samp>\1<b><a target="_blank" href="'"$blobUrl"'\3#L\5"><ins>\2</ins></a>\4</b>\6</samp>|! ; $s!(.*)!|💥|<samp>\1</samp>|! ; T generic-error ; s!\n+!<br/>!gp }' \
+                -e '/^\.\/[^: ]*:[0-9]+:/{ s!^(\./([^: ]*))(:([0-9]+):)(.*)$!|💥|<samp><b><a target="_blank" href="'"$blobUrl"'\2#L\4"><ins>\1</ins></a>\3</b>\5</samp>! ; N ; s!</samp>\n(l\.[0-9]+\s.*)$!<br/>\1</samp>!p ; t line-done ; P ; D ; : line-done }' \
+                -e 's!^((Conversion|Postprocessing) (complete|failed):?)(.* \(See )([^\)]+)(\).*)$!<samp><b>\1</b>\4'"${AUX_URL:+<a href=\"$AUX_URL\">}"'<ins>\5</ins>'"${AUX_URL:+</a>}"'\6</samp>!' \
                 -e 's!^((Conversion|Postprocessing) failed)(.*)$!<samp><b>\1</b>\3</samp>!' \
                 -e 's!^(<samp><b>Info:.*)$!|🔵|\1|!p' \
                 -e 's!^(<samp><b>Warning:.*)$!|⚠️|\1|!p' \
